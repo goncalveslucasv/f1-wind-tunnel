@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wind tunnel</title>
+  <meta name="description" content="Túnel de viento virtual: simulación de fluidos 3D en tu GPU con WebGPU y vgpu." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M3 10h18a4 4 0 1 0-4-4M3 16h24a4 4 0 1 1-4 4M3 22h12%22 stroke=%22%2300d2be%22 stroke-width=%223%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/ui/style.css" />
+</head>
+<body>
+  <canvas id="view"></canvas>
+
+  <header class="brand"><span id="gridInfo" hidden></span></header>
+
+  <button id="panelToggle" class="panel-toggle" aria-label="Mostrar controles">☰ Controles</button>
+
+  <div id="labels" class="labels"><svg id="labelSvg"></svg></div>
+
+  <aside class="panel controls garage" id="controls">
+    <div class="garage-head">
+      <span class="car-dot"></span>
+      <div><b id="carName">MERCEDES W17</b><small>Wind tunnel · 2026</small></div>
+    </div>
+
+    <nav class="tabs" id="tabs">
+      <button data-tab="aero" class="on"><svg viewBox="0 0 24 24"><path d="M3 15c5-1 11-5 18-9M4 19c6-1 11-3 16-6" /></svg>Aero</button>
+      <button data-tab="chassis"><svg viewBox="0 0 24 24"><path d="M4 15h16M7 15v3M17 15v3M6 11l3-4h6l3 4" /></svg>Chasis</button>
+      <button data-tab="view"><svg viewBox="0 0 24 24"><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>Vista</button>
+    </nav>
+
+    <div class="tab" data-tab="aero">
+      <section data-for="0 5">
+        <div class="kicker">Circuito</div>
+        <div class="tracks" id="trackSeg">
+          <button data-track="monza"><b>Monza</b><span>rectas</span><i class="pips p2"></i></button>
+          <button data-track="silverstone"><b>Silverstone</b><span>mixto</span><i class="pips p6"></i></button>
+          <button data-track="monaco"><b>Mónaco</b><span>curvas</span><i class="pips p10"></i></button>
+        </div>
+
+        <input type="checkbox" id="frontOn" checked hidden />
+        <input type="checkbox" id="rearOn" checked hidden />
+
+        <div class="stepper wing-stepper" data-input="front" data-pips="11" data-mount="frontOn"><span class="st-label">Alerón delantero<button class="st-eject" data-mount="frontOn" title="Desmontar el alerón delantero: sale volando del auto"><svg viewBox="0 0 24 24"><path d="M12 5 5 13h14z" /><path d="M5 18h14" /></svg>Quitar</button></span><b id="frontVal"></b>
+          <div class="st-detached"><span><b>Fuera del auto</b><small>Mirá cómo cambian la carga y el balance</small></span><button class="st-mount" data-mount="frontOn">Montar</button></div>
+        </div>
+        <div class="stepper wing-stepper" data-input="rear" data-pips="11" data-mount="rearOn"><span class="st-label">Alerón trasero<button class="st-eject" data-mount="rearOn" title="Desmontar el alerón trasero: sale volando del auto"><svg viewBox="0 0 24 24"><path d="M12 5 5 13h14z" /><path d="M5 18h14" /></svg>Quitar</button></span><b id="rearVal"></b>
+          <div class="st-detached"><span><b>Fuera del auto</b><small>Mirá cómo cambian la carga y el balance</small></span><button class="st-mount" data-mount="rearOn">Montar</button></div>
+        </div>
+        <div class="seg small shape-seg" id="rearShapeSeg" title="Forma del alerón trasero">
+          <button data-v="2">Tablón<small>Mónaco</small></button>
+          <button data-v="0" class="on">Estándar</button>
+          <button data-v="1">Cuchara<small>Monza</small></button>
+        </div>
+        <div class="switch-row">
+          <label class="switch gurney-switch" title="Pestaña de 15 mm en el borde de fuga: más carga a cambio de algo de resistencia"><input type="checkbox" id="gurney" /><span></span>Gurney</label>
+          <label class="switch gurney-switch" title="Flaps más cortos y finos: menos resistencia y menos carga"><input type="checkbox" id="thinWings" /><span></span>Perfiles finos</label>
+        </div>
+        <input id="front" type="range" min="1" max="11" step="1" value="6" hidden />
+        <input id="rear" type="range" min="1" max="11" step="1" value="6" hidden />
+
+        <div class="stepper" data-input="speed"><span class="st-label">Velocidad del viento</span><b id="speedVal"></b></div>
+        <input id="speed" type="range" min="80" max="350" step="10" value="250" hidden />
+
+        <button id="aeroMode" class="mode-toggle" title="Aero activa 2026: en recta se abren los flaps para bajar la resistencia">
+          <span class="am-led"></span>
+          <span class="am-text"><small>Aero activa <kbd>espacio</kbd></small><b id="aeroState">Alerones cerrados</b></span>
+        </button>
+      </section>
+    </div>
+
+    <div class="tab" data-tab="chassis" hidden>
+      <section data-for="0 5">
+        <div class="kicker">Altura <small id="rakeVal" class="rake"></small></div>
+        <div class="stepper" data-input="ride" data-icon="front"><span class="st-label">Delantera</span><b id="rideVal"></b></div>
+        <div class="stepper" data-input="rearRide" data-icon="rear"><span class="st-label">Trasera</span><b id="rearRideVal"></b></div>
+        <input id="ride" type="range" min="0.08" max="0.20" step="0.01" value="0.12" hidden />
+        <input id="rearRide" type="range" min="0.08" max="0.26" step="0.01" value="0.14" hidden />
+        <div class="kicker">Pontones</div>
+        <div class="seg small" id="podSeg">
+          <button data-v="0" class="on">Estándar</button>
+          <button data-v="1">Compactos</button>
+        </div>
+        <div class="kicker">Refrigeración</div>
+        <div class="seg small cool-seg" id="coolSeg">
+          <button data-v="0">Cerrada</button>
+          <button data-v="1" class="on">Normal</button>
+          <button data-v="2">Abierta</button>
+        </div>
+        <button id="mapOpen" class="map-open"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg><span><b>Mapa aero</b><small>barrido de alturas en el túnel</small></span></button>
+      </section>
+      <section data-for="0">
+        <div class="parts parts-3">
+          <button class="part-btn" data-part="sidepod"><span>Pontones</span><b>Downwash</b></button>
+          <button class="part-btn" data-part="cover"><span>Tapa motor</span><b>Estándar</b></button>
+          <button class="part-btn" data-part="nose"><span>Nariz</span><b>Larga</b></button>
+        </div>
+        <div class="parts" hidden>
+          <button class="part-btn" data-part="front"><span>Delantero</span><b></b></button>
+          <button class="part-btn" data-part="rear"><span>Trasero</span><b></b></button>
+        </div>
+      </section>
+    </div>
+
+    <div class="tab" data-tab="view" hidden>
+      <section>
+        <div class="tiles" id="presetSeg">
+          <button data-preset="show" class="on"><svg viewBox="0 0 24 24"><path d="M2 8c6 0 8 3 20 3M2 13c6 0 8 3 20 3M2 18c8 0 10 2 20 2" /></svg>Flujo</button>
+          <button data-preset="cfd"><svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="6" rx="3" /><path d="M7 9v6M12 9v6M17 9v6" /></svg>Presión</button>
+          <button data-preset="vortex"><svg viewBox="0 0 24 24"><path d="M12 12m-2 0a2 2 0 1 0 4 0a4 4 0 1 0-8 0a6 6 0 1 0 12 0" /></svg>Vórtices</button>
+          <button data-preset="heat"><svg viewBox="0 0 24 24"><path d="M12 3c3 4 5 6 5 10a5 5 0 0 1-10 0c0-2 1-4 2-5 0 2 1 3 2 3 0-3 0-5 1-8z" /></svg>Calor</button>
+          <button data-preset="wake"><svg viewBox="0 0 24 24"><path d="M3 12h4M17 6v12M13 8v8M21 9v6M7 9l4 3-4 3" /></svg>Estela</button>
+        </div>
+        <div class="kicker">Partículas</div>
+        <div class="seg small" id="partSeg">
+          <button data-p="1" class="on">Líneas</button>
+          <button data-p="4">Vórtices</button>
+          <button data-p="2">Humo</button>
+          <button data-p="3">Niebla</button>
+          <button data-p="0">Nada</button>
+        </div>
+        <label class="switch"><input type="checkbox" id="labelsOn" checked /><span></span>Etiquetas</label>
+      </section>
+      <details class="advanced">
+        <summary>Avanzado</summary>
+        <div class="kicker">Color</div>
+        <div class="seg small" id="colorSeg">
+          <button data-c="0" class="on">Velocidad</button>
+          <button data-c="1">Presión</button>
+          <button data-c="2">Temp.</button>
+          <button data-c="3">Vorticidad</button>
+          <button data-c="4">Estela</button>
+        </div>
+        <label class="switch"><input type="checkbox" id="surface" /><span></span>Pintar superficie</label>
+        <div class="kicker">Plano de corte</div>
+        <div class="seg small" id="sliceSeg">
+          <button data-s="0" class="on">No</button>
+          <button data-s="3">Central</button>
+          <button data-s="2">Horizontal</button>
+          <button data-s="1">Transversal</button>
+        </div>
+        <label class="slider" id="slicePosRow">
+          <span>Posición <b id="slicePosVal"></b></span>
+          <input id="slicePos" type="range" min="0" max="1" step="0.005" value="0.12" />
+        </label>
+        <div class="kicker">Calidad</div>
+        <div class="seg small" id="qualitySeg">
+          <button data-q="low">Baja</button>
+          <button data-q="medium">Media</button>
+          <button data-q="high">Alta</button>
+        </div>
+        <button id="reset" class="wide ghost">↺ Reiniciar flujo</button>
+      </details>
+    </div>
+
+  </aside>
+
+  <aside class="panel telemetry perfpanel" id="telemetry">
+    <div class="perf-head"><b>Rendimiento</b><button id="setRef" title="Usar esta configuración como referencia para comparar">Fijar referencia</button></div>
+    <div class="stat" id="statTop"><span class="stat-label">Velocidad punta</span><span class="stat-val"></span><span class="stat-delta"></span><div class="stat-bar"><i></i><em></em></div></div>
+    <div class="stat" id="statGrip"><span class="stat-label">Agarre en curva rápida</span><span class="stat-val"></span><span class="stat-delta"></span><div class="stat-bar"><i></i><em></em></div></div>
+    <div class="stat" id="statDown"><span class="stat-label">Carga aerodinámica</span><span class="stat-val"></span><span class="stat-delta"></span><div class="stat-bar"><i></i><em></em></div></div>
+    <div class="stat" id="statEff"><span class="stat-label">Eficiencia</span><span class="stat-val"></span><span class="stat-delta"></span><div class="stat-bar"><i></i><em></em></div></div>
+    <div class="balance">
+      <div class="stat-label">Balance <b id="balVal"></b></div>
+      <div class="bal-bar"><i id="balMarker"></i></div>
+      <div class="bal-ends"><span>Subviraje</span><span>Sobreviraje</span></div>
+    </div>
+    <div class="more">
+      <div class="metric"><span class="label">Resistencia</span><span class="value" id="drag">—</span></div>
+      <div class="metric"><span class="label">Carga</span><span class="value" id="down">—</span></div>
+      <div class="metric small"><span class="label">L/D</span><span class="value" id="ld">—</span><span class="label">Cd·A</span><span class="value" id="cda">—</span></div>
+      <div class="chart-head"><button id="chartFocus" title="Ver el auto completo">Auto completo</button><span class="chart-note">kg · 30 s</span></div>
+      <canvas id="chart" width="560" height="200"></canvas>
+      <div class="chart-legend"><i class="c-drag"></i>resistencia <i class="c-down"></i>carga</div>
+      <div class="comp-head"><span>Componentes</span><span><i class="c-down"></i>carga<i class="c-drag"></i>drag</span></div>
+      <div id="breakdown" class="breakdown"></div>
+      <span id="cellSize" hidden></span>
+    </div>
+    <div id="chartDelta" class="chart-delta" hidden></div>
+  </aside>
+
+  <footer class="bottom">
+    <div class="legend panel">
+      <span id="legendTitle">Velocidad</span>
+      <div class="bar" id="legendBar"></div>
+      <div class="ticks"><span id="legendMin"></span><span id="legendMid"></span><span id="legendMax"></span></div>
+    </div>
+    <div class="cams panel" hidden>
+      <button data-cam="persp">3/4</button>
+      <button data-cam="side">Lateral</button>
+      <button data-cam="front">Frente</button>
+      <button data-cam="top">Arriba</button>
+      <button data-cam="rear">Atrás</button>
+    </div>
+  </footer>
+
+  <span class="fps" id="perf"></span>
+
+  <div class="loading" id="loading">
+    <div class="loading-card">
+      <span class="loading-kicker">Wind tunnel · 2026</span>
+      <b>Mercedes W17</b>
+      <div class="loading-track"><i id="loadingBar"></i></div>
+      <div class="loading-meta"><span id="loadingText">Descargando modelo</span><span id="loadingPct">0%</span></div>
+    </div>
+  </div>
+
+  <div class="hint-float" id="dragHint">Arrastrá para girar · rueda o pellizco para acercar</div>
+
+  <div class="aero-map panel" id="aeroMap" hidden>
+    <header>
+      <b>Mapa aerodinámico</b>
+      <div class="seg small" id="mapMetric">
+        <button data-m="down" class="on">Carga</button>
+        <button data-m="eff">Eficiencia</button>
+        <button data-m="bal">Balance</button>
+      </div>
+      <button id="mapClose" aria-label="Cerrar">✕</button>
+    </header>
+    <canvas id="mapCanvas" width="560" height="470"></canvas>
+    <div class="map-foot">
+      <div class="map-status"><span id="mapStatus">Barrido de 25 alturas · ~80 s</span><span id="mapUnit"></span></div>
+      <div class="loading-track"><i id="mapProgress"></i></div>
+      <button id="mapRun" class="primary wide">Iniciar barrido</button>
+    </div>
+  </div>
+
+  <div class="part-picker" id="partPicker" hidden>
+    <header>
+      <div><h3 id="pickerTitle"></h3><p>Elegí un modelo: el túnel vuelve a simular el flujo en vivo.</p></div>
+      <button id="pickerClose" aria-label="Cerrar">✕</button>
+    </header>
+    <div class="picker-grid" id="pickerGrid"></div>
+  </div>
+
+  <div class="fallback" id="fallback" hidden>
+    <div>
+      <h2>Tu navegador no soporta WebGPU</h2>
+      <p>Esta demo corre la simulación de fluidos directamente en la GPU. Probá con Chrome o Edge actualizados, o Safari 26+ en macOS.</p>
+      <p class="fine" id="fallbackDetail"></p>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

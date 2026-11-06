@@ -1,0 +1,27 @@
+{
+  "name": "aero-tunnel",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "bake:car": "tsx scripts/bake-car.ts",
+    "check:sim": "tsx scripts/headless-check.ts",
+    "check:wings": "tsx scripts/wing-sensitivity.ts",
+    "check:loads": "tsx scripts/wing-loads.ts"
+  },
+  "dependencies": {
+    "@vgpu/wgsl": "^0.6.0",
+    "vgpu": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/pngjs": "^6.0.5",
+    "@webgpu/types": "^0.1.74",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6"
+  }
+}
