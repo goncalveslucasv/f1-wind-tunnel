@@ -345,7 +345,9 @@ for (const spec of gridSpecs) {
   const h = RIG.partGridH, margin = 0.04;
   const origin: Vec3 = [mn[0] - margin, mn[1] - margin, 0];
   const dims: [number, number, number] = [0, 1, 2].map((k) => Math.ceil((mx[k] + margin - origin[k]) / h) + 1) as [number, number, number];
-  const grid = bakeGrid({ origin, h, dims }, spec.want, 0.03, spec.closing, 0.004);
+  // The band must exceed the closing radius: cells left at the band value have to pass the
+  // flood's `dist >= closing` test (0.03 stored as float32 is just below 0.03).
+  const grid = bakeGrid({ origin, h, dims }, spec.want, Math.max(0.03, spec.closing + 0.02), spec.closing, 0.004);
   partGrids.push({ part: spec.part, origin, h, dims, offset });
   chunks.push(grid);
   offset += grid.length;

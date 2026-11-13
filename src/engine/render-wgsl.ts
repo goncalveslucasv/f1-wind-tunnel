@@ -326,8 +326,14 @@ fn domainMax() -> vec3f { return grid.origin + vec3f(grid.dims) * grid.h; }
       mt = materialAt(hit.y, p, n);
     }
     if (look.surfMode == 1u) {
-      let probe = p + n * grid.h * 0.8;
-      let s = sampleFlow(probe);
+      // Thin, stacked wing elements sit in cells that are all solid at this grid size, so step
+      // out along the normal until the probe reaches simulated air.
+      var probe = p + n * grid.h * 0.8;
+      var s = sampleFlow(probe);
+      for (var k = 0; k < 4 && s.fluid <= 0.0; k++) {
+        probe += n * grid.h;
+        s = sampleFlow(probe);
+      }
       if (s.fluid > 0.0) {
         let v = clamp(fieldValue(look.palette, s, probe), 0.0, 1.0);
         let iso = 1.0 - 0.18 * (1.0 - smoothstep(0.0, 0.035, abs(fract(v * 14.0) - 0.5) - 0.44));

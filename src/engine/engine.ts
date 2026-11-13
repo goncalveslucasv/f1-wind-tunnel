@@ -112,6 +112,8 @@ const REAR_SHAPE_TWIST: Record<number, number> = { 0: 0, 1: -16, 2: 6 };
 const THIN_FLAP_SCALE = 0.72;
 const COMPACT_POD_SQUEEZE = 0.32;
 const COOLING_HEAT = [1.55, 1, 0.6];
+// Sidepod duct size for closed / normal / open cooling (W17 only).
+const COOLING_DUCT = [0, 1, 1.3];
 
 const prep = (wgsl: string, name: string) => prepareShader(wgsl, name);
 
@@ -251,7 +253,7 @@ export class AeroEngine {
     this.initB = V.compute(gpu, initShader, { label: "lbm-init-b", set: { grid, sim, fa: this.fB, fields: this.fields } });
 
     const stepShader = prep(LBM_STEP, "lbm-step.wgsl");
-    const common = { grid, sim, solid: this.solid, fields: this.fields, forces: this.forces };
+    const common = { grid, sim, solid: this.solid, emit: this.emit, fields: this.fields, forces: this.forces };
     this.lbm = [
       V.compute(gpu, stepShader, { label: "lbm-ab", set: { ...common, fin: this.fA, fout: this.fB } }),
       V.compute(gpu, stepShader, { label: "lbm-ba", set: { ...common, fin: this.fB, fout: this.fA } }),
@@ -442,7 +444,7 @@ export class AeroEngine {
       heatEngine: p.heatEngine ? 620 * COOLING_HEAT[p.cooling ?? 1] : 0,
       heatRad: p.heatRad ? 75 * COOLING_HEAT[p.cooling ?? 1] : 0,
       frontWing: p.frontWing, rearWing: p.rearWing, sidepod: p.sidepod,
-      cover: p.cover, nose: p.nose, rearRide: p.rearRideH, pad3: 0,
+      cover: p.cover, nose: p.nose, rearRide: p.rearRideH, duct: COOLING_DUCT[p.cooling ?? 1],
     };
     if (this.meshCar) this.meshCar.gurney = p.gurney;
     if (this.rig) {

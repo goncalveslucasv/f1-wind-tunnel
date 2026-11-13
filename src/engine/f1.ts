@@ -367,6 +367,19 @@ fn sdW17(pw: vec3f) -> vec2f {
   return res;
 }
 
+// Cooling ducts through the W17 sidepods, carved out of the tunnel geometry only (the render
+// keeps the closed mesh): air enters at the sidepod inlet and leaves at the coke-bottle exit.
+// shape.duct scales them with the cooling setting (0 = closed bodywork).
+fn w17Duct(pw: vec3f) -> f32 {
+  if (shape.duct <= 0.0) { return 1e3; }
+  let p = podDeform(w17BodyFrame(vec3f(pw.x, pw.y, abs(pw.z))), -1.0);
+  let k = shape.duct;
+  let mouth = sdCapsule(p, vec3f(2.05, 0.52, 0.58), vec3f(3.0, 0.50, 0.48), 0.09 * k);
+  let main = sdCapsule(p, vec3f(2.05, 0.55, 0.47), vec3f(3.25, 0.46, 0.43), 0.1 * k);
+  let exit = sdCapsule(p, vec3f(3.25, 0.46, 0.43), vec3f(4.1, 0.40, 0.32), 0.085 * k);
+  return min(min(mouth, main), exit);
+}
+
 // Heat sources on the W17: brake discs inside the wheels, the exhaust above the crash structure,
 // and the cooling exits at the back of the sidepods and the engine cover.
 fn w17Emission(pw: vec3f) -> f32 {

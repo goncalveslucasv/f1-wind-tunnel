@@ -13,7 +13,7 @@ struct Shape {
   aoa: f32, width: f32, axisY: f32, pScale: f32,
   pOrigin: vec2f, heatBrakes: f32, heatEngine: f32,
   heatRad: f32, frontWing: f32, rearWing: f32, sidepod: f32,
-  cover: f32, nose: f32, rearRide: f32, pad3: f32,
+  cover: f32, nose: f32, rearRide: f32, duct: f32,
 }
 `;
 
@@ -166,6 +166,8 @@ struct Sim { uIn: f32, tau0: f32, smag: f32, pad: f32 }
 @group(0) @binding(4) var<storage, read> solid: array<u32>;
 @group(0) @binding(5) var<storage, read_write> fields: array<vec4f>;
 @group(0) @binding(6) var<storage, read_write> forces: array<atomic<i32>, 12>;
+// Heat sources in solid cells; negative in fluid cells of the W17 sidepod ducts.
+@group(0) @binding(7) var<storage, read> emit: array<f32>;
 
 var<workgroup> wforce: array<atomic<i32>, 9>;
 
@@ -195,6 +197,8 @@ fn stepCell(idx: u32) {
         solid[zl * NX * NY + u32(x)] != 0u || solid[zr * NX * NY + u32(x)] != 0u) { floorU = 0.0; }
   }
   let prevU = fields[idx].xyz;
+  // Duct walls are left out of the force balance: cooling drag comes from calibrated deltas.
+  let ductCell = emit[idx] < 0.0;
   var f: array<f32, 19>;
   for (var i = 0u; i < 19u; i++) {
     let c = vec3i(CX[i], CY[i], CZ[i]);
@@ -216,7 +220,7 @@ fn stepCell(idx: u32) {
       let sg = solid[sidx];
       if (sg != 0u) {
         v = fin[OPP[i] * n + idx];
-        if (!mirrored) { gforce[sg - 1u] -= 2.0 * (v - WT[i]) * vec3f(c); }
+        if (!mirrored && !ductCell) { gforce[sg - 1u] -= 2.0 * (v - WT[i]) * vec3f(c); }
       } else {
         v = fin[src * n + sidx];
       }
@@ -237,6 +241,11 @@ fn stepCell(idx: u32) {
     for (var i = 0u; i < 19u; i++) { f[i] = feq(i, rho, u); }
     gforce[0] = vec3f(0.0); gforce[1] = vec3f(0.0); gforce[2] = vec3f(0.0);
   }
+
+  // Sidepod ducts: at this resolution the duct's viscous losses would stall the flow, so the
+  // ram pressure that feeds a real radiator is modelled by relaxing the air towards a cooling
+  // flow along the car.
+  if (ductCell) { u = mix(u, vec3f(0.55 * sim.uIn, u.y, u.z), 0.04); }
 
   var pxx = 0.0; var pyy = 0.0; var pzz = 0.0; var pxy = 0.0; var pxz = 0.0; var pyz = 0.0;
   var eq: array<f32, 19>;
@@ -300,13 +309,15 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3u) {
   let NX = grid.dims.x; let NY = grid.dims.y;
   let c = vec3u(idx % NX, (idx / NX) % NY, idx / (NX * NY));
   let p = grid.origin + (vec3f(c) + vec3f(0.5)) * grid.h;
-  let r = sceneSdf(p);
+  var r = sceneSdf(p);
+  if (shape.kind == 5u && abs(r.y - 12.0) < 0.5) { r.x = max(r.x, -w17Duct(p)); }
   let inside = r.x < select(0.3, 0.45, shape.kind == 5u) * grid.h && c.x > 1u && c.x < NX - 2u;
   var group = 1u;
   if (abs(r.y - 7.0) < 0.5) { group = 2u; }
   if (abs(r.y - 8.0) < 0.5) { group = 3u; }
   solid[idx] = select(0u, group, inside);
-  emit[idx] = select(0.0, sceneEmission(p), inside);
+  let duct = shape.kind == 5u && w17Duct(p) < 0.0;
+  emit[idx] = select(select(0.0, -1.0, duct), sceneEmission(p), inside);
 }
 `;
 

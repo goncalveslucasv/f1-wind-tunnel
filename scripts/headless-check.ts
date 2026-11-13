@@ -99,7 +99,7 @@ if (only && only.startsWith("w17")) {
     return { width: img.width, height: img.height, data: new Uint8Array(img.data.buffer, img.data.byteOffset, img.data.byteLength) };
   }, rig.wings.rear[rig.wings.rear.length - 1]);
   engine.setCarModel(mesh, new Uint16Array(ab("w17.sdf.bin")), new Uint16Array(ab("w17.parts.bin")), rig);
-  const w17Shots: [string, Partial<ShapeParams>, Partial<Orbit>][] = [
+  const w17Shots: [string, Partial<ShapeParams>, Partial<Orbit>, Partial<ViewParams>?][] = [
     ["w17-rear", {}, { yaw: 0.35, pitch: 0.45, distance: 2.2, target: [4.85, 0.9, 0.15] }],
     ["w17-rear-straight", { frontFlapDeg: -12, rearFlapDeg: -28 }, { yaw: 0.35, pitch: 0.45, distance: 2.2, target: [4.85, 0.9, 0.15] }],
     ["w17-rear-gurney", { gurney: true }, { yaw: 0.9, pitch: 0.25, distance: 1.2, target: [4.95, 0.93, 0.25] }],
@@ -113,11 +113,13 @@ if (only && only.startsWith("w17")) {
     ["w17-front", {}, { yaw: 2.6, pitch: 0.35, distance: 1.9, target: [0.2, 0.28, 0.3] }],
     ["w17-front-straight", { frontFlapDeg: -12, rearFlapDeg: -28 }, { yaw: 2.6, pitch: 0.35, distance: 1.9, target: [0.2, 0.28, 0.3] }],
     ["w17-front-high", { frontWing: 1, frontFlapDeg: 6 }, { yaw: 2.6, pitch: 0.35, distance: 1.9, target: [0.2, 0.28, 0.3] }],
+    ["w17-surf-pressure", {}, { yaw: 2.3, pitch: 0.3, distance: 6.0 }, { colorField: ColorField.Pressure, surfaceField: true }],
+    ["w17-surf-heat", {}, { yaw: 2.3, pitch: 0.3, distance: 6.0 }, { colorField: ColorField.Temperature, surfaceField: true }],
   ];
-  for (const [name, sp, o] of w17Shots) {
+  for (const [name, sp, o, v] of w17Shots) {
     if (!name.startsWith(only)) continue;
     console.error(name);
-    engine.setView({ ...base, flowMode: FlowMode.None });
+    engine.setView({ ...base, flowMode: FlowMode.None, ...v });
     engine.setShape({ ...shape, kind: ShapeKind.W17, rideH: 0.12, rearRideH: 0.14, ...sp });
     for (let i = 0; i < (name === "w17-fly" ? 42 : 10); i++) engine.frame(out, orbit(o), 2, 1 / 60);
     await snap(`${name}.png`);

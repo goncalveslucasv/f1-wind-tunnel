@@ -274,6 +274,26 @@ body.clean .hud-toggle .hud-show { display: inline; }
   z-index: 20;
 }
 .fallback[hidden] { display: none; }
+
+/* ---------- Phones: the W17 stays in the pitstop ---------- */
+.pitstop { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 24px 16px; text-align: center; background: radial-gradient(ellipse at 50% 30%, #0c1a19 0%, #000 70%); }
+.pitstop-card { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 360px; }
+.pitstop-card b { font: 800 30px var(--cond); letter-spacing: 0.14em; text-transform: uppercase; }
+.pitstop-card h2 { margin: 10px 0 0; font: 700 22px/1.2 var(--cond); letter-spacing: 0.02em; text-transform: uppercase; color: var(--accent); }
+.pitstop-card p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+.pitstop-card button { margin-top: 12px; padding: 10px 22px; font-size: 14px; }
+.pit-lights { display: flex; gap: 10px; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; background: #0b0c0d; border: 1px solid var(--panel-border); }
+.pit-lights i { width: 18px; height: 18px; border-radius: 50%; background: #2a0606; animation: pit-light 3.2s infinite; }
+.pit-lights i:nth-child(2) { animation-delay: 0.25s; }
+.pit-lights i:nth-child(3) { animation-delay: 0.5s; }
+.pit-lights i:nth-child(4) { animation-delay: 0.75s; }
+.pit-lights i:nth-child(5) { animation-delay: 1s; }
+@keyframes pit-light {
+  0%, 8% { background: #2a0606; box-shadow: none; }
+  12%, 70% { background: #ff2a2a; box-shadow: 0 0 12px rgba(255, 40, 40, 0.75); }
+  76%, 100% { background: #2a0606; box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) { .pit-lights i { animation: none; background: #ff2a2a; } }
 .fallback div { max-width: 460px; }
 
 @media (max-width: 1100px) {

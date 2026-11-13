@@ -20,6 +20,12 @@ const REAR_TWIST_DEG = [0, -16, 6];
 // ΔCdA / ΔClA in m² (≈ ±10–15 kg at 250 km/h).
 const COOLING_COEF = [{ cd: -0.03, cl: 0.01 }, { cd: 0, cl: 0 }, { cd: 0.055, cl: -0.02 }];
 const SIDEPOD_COEF = [{ cd: 0, cl: 0 }, { cd: -0.05, cl: 0.035 }];
+// Body calibration for the W17: at ~4.5 cm cells the floor's ground effect is out of reach (the
+// floor makes lift) and the body drag comes out ~45% high. The tunnel's ClA gets the missing floor
+// load added and its CdA is scaled, which puts the default setup near 340 km/h top speed; setup
+// changes still come from the simulation.
+const BODY_CDA_SCALE = 0.69;
+const BODY_CLA_FLOOR = 0.31;
 const WING_STEP_FRONT = 2.5;
 const WING_STEP_REAR_FLAP = 3;
 const WING_STEP_REAR_MAIN = 0.8;
@@ -44,7 +50,28 @@ function showFallback(detail = "") {
   $("fallbackDetail").textContent = detail;
 }
 
+// Phones and touch-only tablets can't run the tunnel at a usable frame rate; ?force skips the check.
+function isPhone() {
+  const touchOnly = matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
+  return touchOnly || /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent);
+}
+
+function showPitstop() {
+  $("loading").hidden = true;
+  $("pitstop").hidden = false;
+  const btn = $<HTMLButtonElement>("pitstopCopy");
+  btn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      btn.textContent = "Link copiado";
+    } catch {
+      btn.textContent = location.host;
+    }
+  });
+}
+
 async function boot() {
+  if (isPhone() && !new URLSearchParams(location.search).has("force")) return showPitstop();
   if (!("gpu" in navigator)) return showFallback();
   let gpu: V.Gpu;
   try {
@@ -569,7 +596,10 @@ async function boot() {
     const cool = COOLING_COEF[shapeCur.cooling] ?? COOLING_COEF[1];
     const fw = { drag: wingLoads.front.dragN, down: wingLoads.front.downforceN };
     const rw = { drag: wingLoads.rear.dragN, down: wingLoads.rear.downforceN };
-    const body = { drag: (bodyCoef.cd + pods.cd + cool.cd) * q, down: (bodyCoef.cl + pods.cl + cool.cl) * q };
+    const body = {
+      drag: (bodyCoef.cd * BODY_CDA_SCALE + pods.cd + cool.cd) * q,
+      down: (bodyCoef.cl + BODY_CLA_FLOOR + pods.cl + cool.cl) * q,
+    };
     return {
       ...f,
       body,
