@@ -199,6 +199,28 @@ input[type="checkbox"] { accent-color: var(--accent); }
 
 .panel-toggle { display: none; }
 
+.hud-toggle {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  transition: opacity 0.2s;
+}
+.hud-toggle kbd { padding: 0 5px; border-radius: 4px; font: 600 9.5px "JetBrains Mono", monospace; color: var(--muted); background: #161c27; border: 1px solid var(--panel-border); }
+.hud-toggle .hud-show { display: none; }
+/* Clean view: only the scene stays; the toggle is invisible until hovered (still clickable/tappable). */
+body.clean > :not(#view, .loading, .fallback, .hud-toggle) { display: none !important; }
+body.clean .hud-toggle { opacity: 0; }
+body.clean .hud-toggle:hover, body.clean .hud-toggle:focus-visible { opacity: 1; }
+body.clean .hud-toggle .hud-hide { display: none; }
+body.clean .hud-toggle .hud-show { display: inline; }
+
 .modal {
   position: fixed;
   inset: 0;

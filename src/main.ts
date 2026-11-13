@@ -446,6 +446,20 @@ async function boot() {
 
   $("panelToggle").addEventListener("click", () => $("controls").classList.toggle("open"));
 
+  // Clean view: hides every overlay so only the 3D scene is left (for screenshots and video).
+  const hudBtn = $("hudToggle");
+  const setClean = (on: boolean) => {
+    document.body.classList.toggle("clean", on);
+    hudBtn.setAttribute("aria-pressed", String(on));
+  };
+  hudBtn.addEventListener("click", () => setClean(!document.body.classList.contains("clean")));
+  window.addEventListener("keydown", (e) => {
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target instanceof Element && e.target.closest("input, textarea")) return;
+    if (e.key === "h" || e.key === "H") setClean(!document.body.classList.contains("clean"));
+    else if (e.key === "Escape") setClean(false);
+  });
+
   // ---------- Camera ----------
   for (const b of document.querySelectorAll<HTMLButtonElement>(".cams button")) {
     b.addEventListener("click", () => Object.assign(orbitGoal, CAMERA_PRESETS[b.dataset.cam!]));
@@ -863,7 +877,7 @@ async function boot() {
 
   let lastCam: ReturnType<typeof orbitCamera> | null = null;
   function pickPart(cx: number, cy: number): Part | null {
-    if (!lastCam || !isRaceCar(shapeCur.kind)) return null;
+    if (!lastCam || !isRaceCar(shapeCur.kind) || document.body.classList.contains("clean")) return null;
     const cam = lastCam;
     const a = f1Anchors(shapeCur.rideH);
     const b = shapeCur.rideH;
